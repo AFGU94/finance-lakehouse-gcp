@@ -1,2 +1,5 @@
-pip install yfinance pandas google-cloud-storage google-cloud-bigquery db-dtypes
-pip freeze > requirements.txt
+yfinance==1.2.0 
+pandas==2.3.3 
+google-cloud-storage==3.9.0 
+google-cloud-bigquery==3.40.1 
+db-dtypes==1.5.0
