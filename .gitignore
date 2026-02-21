@@ -10,6 +10,15 @@ __pycache__/
 
 # Archivos de entorno y secretos (NUNCA SUBIR A GITHUB)
 .env
+.env.*
+.env.local
+
+# Claves y credenciales GCP (service account keys en JSON)
+credentials/
+keys/
+*-key.json
+*credentials*.json
+service-account*.json
 
 # Archivos de Terraform
 .terraform/
@@ -17,3 +26,12 @@ __pycache__/
 *.tfstate.backup
 terraform.tfvars
 *.auto.tfvars
+
+# dbt
+dbt_packages/
+target/
+logs/
+
+# OS / editor
+.DS_Store
+*.log
