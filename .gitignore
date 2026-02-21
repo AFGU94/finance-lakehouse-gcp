@@ -1,0 +1,19 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos de entorno y secretos (NUNCA SUBIR A GITHUB)
+.env
+
+# Archivos de Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+*.auto.tfvars
