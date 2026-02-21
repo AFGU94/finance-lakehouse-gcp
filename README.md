@@ -71,3 +71,5 @@ Data Lakehouse financiero **serverless** en Google Cloud, diseñado para mantene
 - **Contenedores:** Docker → Cloud Run Jobs
 - **Transformación:** dbt Core
 - **Control de versiones:** Git
+
+prueba
