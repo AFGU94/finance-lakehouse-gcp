@@ -1,5 +1,7 @@
-yfinance==1.2.0 
-pandas==2.3.3 
-google-cloud-storage==3.9.0 
-google-cloud-bigquery==3.40.1 
+# Ingestión: yfinance + Parquet + GCS + BigQuery
+yfinance==1.2.0
+pandas==2.3.3
+pyarrow>=14.0.0
+google-cloud-storage==3.9.0
+google-cloud-bigquery==3.40.1
 db-dtypes==1.5.0

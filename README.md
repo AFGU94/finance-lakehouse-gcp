@@ -58,11 +58,23 @@ Data Lakehouse financiero **serverless** en Google Cloud, diseñado para mantene
 - **`/src`** – Scripts Python de ingestión (yfinance → Parquet, carga a BigQuery).
 - **`/dbt_project`** – Modelos dbt (staging → marts).
 
-## Siguientes pasos (Fase 2)
+## Fase 2 – Ingestión (src)
 
-- Implementar script Python: descarga con yfinance, escritura Parquet en `raw/YYYY-MM-DD/`, carga a BigQuery staging.
-- Dockerfile que ejecute el script (y luego dbt).
-- Publicar imagen en Artifact Registry y actualizar la referencia del Cloud Run Job en Terraform.
+Pipeline: **yfinance** → Parquet en GCS `raw/YYYY-MM-DD/` → BigQuery `staging.stock_prices`.
+
+**Ejecutar en local** (desde la raíz del repo, con `.venv` activado):
+
+```bash
+# Variables de entorno (mismas que inyecta Terraform en Cloud Run)
+export GCS_BUCKET=tu-bucket-name
+export BQ_PROJECT=tu-project-id
+export BQ_DATASET_STAGING=staging
+python -m src.main
+```
+
+Tickers por defecto: `AAPL`, `MSFT`, `TSLA` (editar `src/config.py` para cambiar).
+
+**Siguientes pasos (Fase 2.3–2.4):** Dockerfile que ejecute `python -m src.main`, push a Artifact Registry y actualizar la imagen del Cloud Run Job en Terraform.
 
 ## Stack
 
