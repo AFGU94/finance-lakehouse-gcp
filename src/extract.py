@@ -62,11 +62,14 @@ def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
     if data is None or data.empty:
         return None
 
-    # yfinance con un solo ticker: columnas Open, High, Low, Close, Adj Close, Volume
     data = data.copy()
     data.index = pd.to_datetime(data.index)
     if data.index.tz is not None:
         data.index = data.index.tz_localize(None)
+
+    # Primero aplanar columnas (yfinance puede devolver MultiIndex: ('Open',''), etc.)
+    # Si no hacemos esto, el rename no hace match y luego perdemos OHLCV al filtrar columnas.
+    data.columns = [_flatten_col(c) for c in data.columns]
     data = data.rename(
         columns={
             "Open": "open",
@@ -78,7 +81,25 @@ def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
         }
     )
     data["symbol"] = symbol
-    data = data.reset_index().rename(columns={"Date": "date"})
+    data = data.reset_index()
+    data.columns = [_flatten_col(c) for c in data.columns]
+    data = data.rename(columns={"Date": "date"} if "Date" in data.columns else {})
     cols = ["date", "symbol", "open", "high", "low", "close", "adj_close", "volume"]
     data = data[[c for c in cols if c in data.columns]]
+    # Limitar precios a 2 decimales
+    price_cols = [c for c in ("open", "high", "low", "close", "adj_close") if c in data.columns]
+    if price_cols:
+        data[price_cols] = data[price_cols].round(2)
     return data
+
+
+def _flatten_col(c) -> str:
+    """
+    Convierte nombre de columna a string (evita tuplas que BigQuery rechaza).
+    yfinance devuelve MultiIndex (Price, Ticker), ej: ('Open', 'AAPL'), ('Adj Close', 'AAPL').
+    Usamos el primer elemento (nombre del precio) para que el rename a 'open', etc. haga match.
+    """
+    if isinstance(c, tuple):
+        parts = [str(x).strip() for x in c if x]
+        return parts[0] if parts else "col"
+    return str(c)

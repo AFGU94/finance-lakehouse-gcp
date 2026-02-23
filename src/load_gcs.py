@@ -33,6 +33,21 @@ def save_to_gcs(df: pd.DataFrame, date_prefix: str | None = None) -> str | None:
         logger.error("GCS_BUCKET not set")
         return None
 
+    # BigQuery no acepta nombres de columna como tuplas (ej. ('date','')); asegurar strings planos
+    df = df.copy()
+    new_cols = []
+    for c in df.columns:
+        if isinstance(c, tuple):
+            new_cols.append("_".join(str(x) for x in c if x) or "col")
+        else:
+            new_cols.append(str(c))
+    df.columns = new_cols
+
+    # Parquet con datetime64 se escribe como INT64 (timestamp); BigQuery DATE espera date32.
+    # Convertir 'date' a date para que PyArrow escriba date32[day].
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], utc=False).dt.date
+
     prefix = date_prefix or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     blob_path = f"raw/{prefix}/stock_prices.parquet"
 
