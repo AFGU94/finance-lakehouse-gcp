@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
-from src.config import get_gcs_bucket
+from src.config import get_bq_project, get_gcs_bucket
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,12 @@ def save_to_gcs(df: pd.DataFrame, date_prefix: str | None = None) -> str | None:
         return None
 
     bucket_name = get_gcs_bucket()
+    project = get_bq_project()
     if not bucket_name:
         logger.error("GCS_BUCKET not set")
+        return None
+    if not project:
+        logger.error("BQ_PROJECT not set (necesario para el cliente GCS)")
         return None
 
     # BigQuery no acepta nombres de columna como tuplas (ej. ('date','')); asegurar strings planos
@@ -54,7 +58,7 @@ def save_to_gcs(df: pd.DataFrame, date_prefix: str | None = None) -> str | None:
     try:
         from google.cloud import storage
 
-        client = storage.Client()
+        client = storage.Client(project=project)
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(blob_path)
 

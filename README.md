@@ -74,7 +74,16 @@ python -m src.main
 
 Tickers por defecto: `AAPL`, `MSFT`, `TSLA` (editar `src/config.py` para cambiar).
 
-**Siguientes pasos (Fase 2.3–2.4):** Dockerfile que ejecute `python -m src.main`, push a Artifact Registry y actualizar la imagen del Cloud Run Job en Terraform.
+### Fase 2.3 – Imagen Docker
+
+Construir y probar en local (sustituir bucket/project por los tuyos):
+
+```bash
+docker build -t finance-ingest .
+docker run --rm -e GCS_BUCKET=tu-bucket -e BQ_PROJECT=tu-project -e BQ_DATASET_STAGING=staging finance-ingest
+```
+
+**Fase 2.4:** Push a Artifact Registry y actualizar la imagen del Cloud Run Job en Terraform (quitar `ignore_changes` del `lifecycle` y apuntar a tu imagen).
 
 ## Stack
 

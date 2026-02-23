@@ -1,0 +1,25 @@
+# No copiar al contexto de build
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.git/
+.gitignore
+*.md
+.env
+.env.*
+.terraform/
+*.tfstate*
+terraform.tfvars
+*.auto.tfvars
+infra/
+dbt_project/
+*.parquet
+.DS_Store
+*.log
+.cursorrules
+.cursor/
