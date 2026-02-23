@@ -52,13 +52,14 @@ def extract_stock_data(
 
 def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
     """Descarga un ticker y normaliza a una fila por fecha con columna symbol."""
-    data = yf.download(
-        symbol,
-        period=period,
-        progress=False,
-        auto_adjust=False,
-        threads=False,
-    )
+    try:
+        ticker = yf.Ticker(symbol)
+        # history() suele ser más estable que download() cuando la API devuelve None
+        data = ticker.history(period=period, auto_adjust=False)
+    except Exception as e:
+        logger.debug("Ticker.history failed for %s: %s", symbol, e)
+        data = None
+
     if data is None or data.empty:
         return None
 
@@ -67,8 +68,7 @@ def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
     if data.index.tz is not None:
         data.index = data.index.tz_localize(None)
 
-    # Primero aplanar columnas (yfinance puede devolver MultiIndex: ('Open',''), etc.)
-    # Si no hacemos esto, el rename no hace match y luego perdemos OHLCV al filtrar columnas.
+    # history() devuelve columnas simples (Open, High, ...) o a veces MultiIndex; aplanar
     data.columns = [_flatten_col(c) for c in data.columns]
     data = data.rename(
         columns={
@@ -80,6 +80,10 @@ def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
             "Volume": "volume",
         }
     )
+    # Si no hay Adj Close (común con history()), usar Close
+    if "adj_close" not in data.columns and "close" in data.columns:
+        data["adj_close"] = data["close"]
+
     data["symbol"] = symbol
     data = data.reset_index()
     data.columns = [_flatten_col(c) for c in data.columns]
