@@ -36,3 +36,9 @@ variable "artifact_registry_repo" {
   type        = string
   default     = "finance-lakehouse"
 }
+
+variable "ingest_image" {
+  description = "Imagen Docker del pipeline de ingestión (Artifact Registry). Si no se define, se usa REPO/ingest:latest."
+  type        = string
+  default     = ""
+}

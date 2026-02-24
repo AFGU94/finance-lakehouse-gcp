@@ -13,8 +13,14 @@ output "artifact_registry_repository" {
 }
 
 output "artifact_registry_url" {
-  description = "URL para docker push (sin imagen)"
+  #description = "URL para docker push (sin imagen)"
+  description = "URL base para docker push (sin imagen:tag)"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repo}"
+}
+
+output "ingest_image" {
+  description = "Imagen que usa el Cloud Run Job (tag para docker push)"
+  value       = local.ingest_image
 }
 
 output "bigquery_staging_dataset" {

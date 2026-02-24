@@ -1,8 +1,12 @@
 """
 Entrypoint del pipeline de ingestión - Financial Data Lakehouse.
 Extract (yfinance) -> Load GCS (Parquet) -> Load BigQuery (staging).
-Ejecutar: python -m src.main o desde src/: python main.py
+
+Uso:
+  Carga incremental (2 días, uso diario):  python -m src.main
+  Carga inicial / backfill (1 mes):         python -m src.main --backfill
 """
+import argparse
 import logging
 import sys
 from datetime import datetime, timezone
@@ -22,21 +26,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_ingestion(period: str = "1mo") -> int:
+def run_ingestion(incremental: bool = True, backfill_period: str = "1mo") -> int:
     """
     Ejecuta el pipeline: extraer -> GCS -> BigQuery.
+
+    Args:
+        incremental: True = ventana 2 días (uso diario). False = backfill con period.
+        backfill_period: Solo si incremental=False. Ej: 1mo, 3mo, 6mo, 1y.
 
     Returns:
         0 si todo ok, 1 si hubo error.
     """
     date_prefix = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    logger.info("Starting ingestion for date_prefix=%s, period=%s", date_prefix, period)
+    mode = "incremental (2d)" if incremental else f"backfill ({backfill_period})"
+    logger.info("Starting ingestion for date_prefix=%s, mode=%s", date_prefix, mode)
 
     if not get_gcs_bucket():
         logger.error("GCS_BUCKET not set; set env or run with GCS_BUCKET=...")
         return 1
 
-    df = extract_stock_data(period=period)
+    df = extract_stock_data(incremental=incremental, period=backfill_period if not incremental else None)
     if df is None or df.empty:
         logger.error("No data extracted")
         return 1
@@ -56,5 +65,30 @@ def run_ingestion(period: str = "1mo") -> int:
     return 0
 
 
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Financial Lakehouse: ingestión yfinance -> GCS -> BigQuery.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Ejemplos:
+  Carga inicial (1 mes, una vez):   python -m src.main --backfill
+  Carga incremental (2 días):     python -m src.main
+  Backfill 3 meses:                python -m src.main --backfill --period 3mo
+        """,
+    )
+    parser.add_argument(
+        "--backfill",
+        action="store_true",
+        help="Carga inicial / backfill con ventana de tiempo (default: 1mo).",
+    )
+    parser.add_argument(
+        "--period",
+        default="1mo",
+        help="Ventana para backfill si --backfill (default: 1mo). Ej: 1mo, 3mo, 6mo, 1y.",
+    )
+    args = parser.parse_args()
+    return run_ingestion(incremental=not args.backfill, backfill_period=args.period)
+
+
 if __name__ == "__main__":
-    sys.exit(run_ingestion())
+    sys.exit(main())

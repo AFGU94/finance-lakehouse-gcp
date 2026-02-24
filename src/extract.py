@@ -1,9 +1,10 @@
 """
 Extracción de datos desde Yahoo Finance (yfinance).
 Devuelve un DataFrame normalizado para GCS y BigQuery.
+Soporta carga incremental por ventana de fechas (start/end) o backfill por period.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas as pd
@@ -13,17 +14,26 @@ from src.config import TICKERS
 
 logger = logging.getLogger(__name__)
 
+# Días atrás para carga incremental diaria (cubre fines de semana y festivos)
+INCREMENTAL_DAYS = 2
+
 
 def extract_stock_data(
     tickers: Optional[list[str]] = None,
-    period: str = "1mo",
+    period: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    incremental: bool = True,
 ) -> pd.DataFrame:
     """
     Descarga OHLCV (+ Adj Close) para los tickers indicados.
 
     Args:
         tickers: Lista de símbolos (default: config.TICKERS).
-        period: Rango yfinance: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, max.
+        period: Rango yfinance (solo si incremental=False): 1d, 5d, 1mo, 3mo, 6mo, 1y, max.
+        start_date: Inicio de ventana (carga incremental).
+        end_date: Fin de ventana (carga incremental).
+        incremental: Si True (default), ignora period y usa ventana (end_date - INCREMENTAL_DAYS, end_date).
 
     Returns:
         DataFrame con columnas: date, symbol, open, high, low, close, adj_close, volume.
@@ -33,10 +43,19 @@ def extract_stock_data(
         logger.warning("No tickers configured")
         return pd.DataFrame()
 
+    if incremental:
+        end = end_date or date.today()
+        start = start_date or (end - timedelta(days=INCREMENTAL_DAYS))
+        period_arg = None
+        start_end = (start, end)
+    else:
+        period_arg = period or "5d"
+        start_end = None
+
     all_dfs: list[pd.DataFrame] = []
     for symbol in symbols:
         try:
-            df = _download_one(symbol, period)
+            df = _download_one(symbol, period=period_arg, start_end=start_end)
             if df is not None and not df.empty:
                 all_dfs.append(df)
         except Exception as e:
@@ -50,12 +69,24 @@ def extract_stock_data(
     return result
 
 
-def _download_one(symbol: str, period: str) -> Optional[pd.DataFrame]:
+def _download_one(
+    symbol: str,
+    period: Optional[str] = None,
+    start_end: Optional[tuple[date, date]] = None,
+) -> Optional[pd.DataFrame]:
     """Descarga un ticker y normaliza a una fila por fecha con columna symbol."""
     try:
         ticker = yf.Ticker(symbol)
-        # history() suele ser más estable que download() cuando la API devuelve None
-        data = ticker.history(period=period, auto_adjust=False)
+        if start_end is not None:
+            start_d, end_d = start_end
+            # yfinance acepta datetime o string YYYY-MM-DD
+            data = ticker.history(
+                start=datetime.combine(start_d, datetime.min.time()),
+                end=datetime.combine(end_d, datetime.min.time()),
+                auto_adjust=False,
+            )
+        else:
+            data = ticker.history(period=period or "5d", auto_adjust=False)
     except Exception as e:
         logger.debug("Ticker.history failed for %s: %s", symbol, e)
         data = None

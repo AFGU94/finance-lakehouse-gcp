@@ -4,7 +4,8 @@
 # ------------------------------------------------------------------------------
 
 locals {
-  bucket_name = "${var.bucket_name_prefix}-${var.project_id}"
+  bucket_name  = "${var.bucket_name_prefix}-${var.project_id}"
+  ingest_image = var.ingest_image != "" ? var.ingest_image : "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repo}/ingest:latest"
 }
 
 # ----- Service Account para Cloud Run Job (mínimos permisos) -----
@@ -88,6 +89,7 @@ resource "google_bigquery_dataset" "marts" {
 # ----- Cloud Run Job (límites duros Free Tier) -----
 # Imagen: placeholder hasta que tengas la imagen en Artifact Registry.
 # Tras el primer `docker build` y `push`, usa la imagen real.
+# Imagen: subir con docker push al Artifact Registry (paso 2.4).
 resource "google_cloud_run_v2_job" "ingest" {
   name     = var.cloud_run_job_name
   location = var.region
@@ -99,7 +101,8 @@ resource "google_cloud_run_v2_job" "ingest" {
       timeout     = "60s" # Límite duro: 60 segundos
 
       containers {
-        image = "us-docker.pkg.dev/cloudrun/container/job:latest" # Placeholder; reemplazar por tu imagen
+        #image = "us-docker.pkg.dev/cloudrun/container/job:latest" # Placeholder; reemplazar por tu imagen
+        image = local.ingest_image
 
         resources {
           limits = {
@@ -129,12 +132,11 @@ resource "google_cloud_run_v2_job" "ingest" {
       service_account = google_service_account.lakehouse_job.email
     }
   }
-
-  lifecycle {
+  /*lifecycle {
     ignore_changes = [
       template[0].template[0].containers[0].image
     ]
-  }
+  }*/
 }
 
 # ----- Cloud Scheduler: dispara el Job a las 8:00 AM -----

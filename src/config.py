@@ -6,7 +6,7 @@ import os
 from typing import List
 
 # Tickers a ingestar (Yahoo Finance)
-TICKERS: List[str] = ["AAPL", "MSFT", "TSLA"]
+TICKERS: List[str] = ["AAPL", "MSFT", "AMZN"]
 
 # Nombre de la tabla de staging en BigQuery
 STAGING_TABLE_STOCK_PRICES = "stock_prices"
