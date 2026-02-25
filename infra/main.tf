@@ -90,12 +90,16 @@ resource "google_bigquery_dataset" "marts" {
 # Imagen: placeholder hasta que tengas la imagen en Artifact Registry.
 # Tras el primer `docker build` y `push`, usa la imagen real.
 # Imagen: subir con docker push al Artifact Registry (paso 2.4).
+# task_count=1 y parallelism=1 evitan cobro por múltiples tareas; timeout 60s y 512Mi/1 CPU mantienen coste mínimo.
 resource "google_cloud_run_v2_job" "ingest" {
   name     = var.cloud_run_job_name
   location = var.region
   project  = var.project_id
 
   template {
+    task_count  = 1
+    parallelism = 1
+
     template {
       max_retries = 1
       timeout     = "60s" # Límite duro: 60 segundos
