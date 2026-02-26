@@ -88,6 +88,7 @@ done
 
 3. **Anotar outputs** (bucket, imagen para Docker):
    ```bash
+   cd infra
    terraform output gcs_bucket
    terraform output ingest_image
    ```

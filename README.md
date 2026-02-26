@@ -90,6 +90,7 @@ done
 
 3. **Note the outputs** (bucket, image URL for Docker):
    ```bash
+   cd infra
    terraform output gcs_bucket
    terraform output ingest_image
    ```
