@@ -32,6 +32,9 @@ dbt_packages/
 target/
 logs/
 
+# Cursor (reglas personales)
+.cursor/rules/
+
 # OS / editor
 .DS_Store
 *.log
