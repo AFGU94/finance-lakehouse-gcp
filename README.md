@@ -1,10 +1,12 @@
 # Financial Data Lakehouse (GCP Free Tier)
 
-Data Lakehouse financiero **serverless** en Google Cloud, diseñado para mantenerse **100% en Free Tier**: ingestión con yfinance, Cloud Run Jobs, GCS, BigQuery y (opcional) dbt.
+**This document is also available in [Spanish](README.es.md).**
+
+A **serverless** financial Data Lakehouse on Google Cloud, designed to stay **100% within the Free Tier**: ingestion with yfinance, Cloud Run Jobs, GCS, BigQuery, and (optionally) dbt.
 
 ---
 
-## Arquitectura (ELT)
+## Architecture (ELT)
 
 ```
 [Cloud Scheduler 8:00 AM] → [Cloud Run Job]
@@ -12,199 +14,199 @@ Data Lakehouse financiero **serverless** en Google Cloud, diseñado para mantene
     (1) Extract  ← Python (yfinance) → Yahoo Finance API
     (2) Load     → GCS (raw/YYYY-MM-DD/*.parquet)
     (3) Load     → BigQuery (staging.stock_prices)
-    (4) Transform → dbt Core → BigQuery (marts)  [pendiente]
+    (4) Transform → dbt Core → BigQuery (marts)  [pending]
 ```
 
 ---
 
-## Cinturón de seguridad (costes $0)
+## Cost guardrails ($0 target)
 
-| Recurso | Límite configurado |
-|--------|---------------------|
-| **Región** | `us-central1` (obligatorio) |
-| **Cloud Run Job** | 512 MiB RAM, 1 CPU, timeout 60 s |
-| **Cloud Storage** | Lifecycle: borrar objetos > 30 días (límite gratis 5 GB) |
-| **Artifact Registry** | Cleanup: mantener solo las últimas 2 imágenes |
+| Resource | Configured limit |
+|----------|------------------|
+| **Region** | `us-central1` (required) |
+| **Cloud Run Job** | 512 MiB RAM, 1 CPU, 60 s timeout |
+| **Cloud Storage** | Lifecycle: delete objects older than 30 days (5 GB free limit) |
+| **Artifact Registry** | Cleanup: keep only the latest 2 images |
 
 ---
 
-## Estructura del proyecto
+## Project structure
 
-| Carpeta / archivo | Contenido |
-|-------------------|-----------|
+| Folder / file | Contents |
+|---------------|----------|
 | **`/infra`** | Terraform: GCS, Artifact Registry, BigQuery (staging + marts), Cloud Run Job, Cloud Scheduler, Service Account. |
-| **`/src`** | Pipeline Python: `config.py` (tickers, env), `extract.py` (yfinance), `load_gcs.py`, `load_bigquery.py`, `main.py` (entrypoint). |
-| **`/dbt_project`** | Modelos dbt (staging → marts), pendiente de implementar. |
+| **`/src`** | Python pipeline: `config.py` (tickers, env), `extract.py` (yfinance), `load_gcs.py`, `load_bigquery.py`, `main.py` (entrypoint). |
+| **`/dbt_project`** | dbt models (staging → marts), to be implemented. |
 
 ---
 
-## Prerrequisitos
+## Prerequisites
 
-- **Cuenta GCP** y un proyecto.
-- **gcloud** instalado y autenticado.
-- **Terraform** ≥ 1.5 (repositorio oficial HashiCorp recomendado).
-- **Docker** (para construir y subir la imagen del Job).
-- **Python 3.9+** y `.venv` en la raíz para ejecutar el pipeline en local.
+- **GCP account** and a project.
+- **gcloud** installed and authenticated.
+- **Terraform** ≥ 1.5 (HashiCorp official repository recommended).
+- **Docker** (to build and push the Job image).
+- **Python 3.9+** and a `.venv` in the repo root to run the pipeline locally.
 
 ---
 
-## Paso a paso de ejecución
+## Step-by-step execution
 
-Orden recomendado para dejar el proyecto funcionando de punta a punta.
+Recommended order to get the project running end-to-end.
 
-### 0. Autenticación y APIs (una vez por proyecto)
+### 0. Authentication and APIs (once per project)
 
 ```bash
 gcloud auth application-default login
-gcloud config set project TU_PROJECT_ID
+gcloud config set project YOUR_PROJECT_ID
 ```
 
-Activar APIs necesarias (sustituir `TU_PROJECT_ID`):
+Enable required APIs (replace `YOUR_PROJECT_ID`):
 
 ```bash
 for api in run.googleapis.com cloudscheduler.googleapis.com artifactregistry.googleapis.com bigquery.googleapis.com storage.googleapis.com iam.googleapis.com; do
-  gcloud services enable $api --project=TU_PROJECT_ID
+  gcloud services enable $api --project=YOUR_PROJECT_ID
 done
 ```
 
 ---
 
-### Fase 1 – Infraestructura (Terraform)
+### Phase 1 – Infrastructure (Terraform)
 
 1. **Variables**
    ```bash
    cp infra/terraform.tfvars.example infra/terraform.tfvars
-   # Editar infra/terraform.tfvars y poner project_id
+   # Edit infra/terraform.tfvars and set project_id
    ```
 
-2. **Desplegar**
+2. **Deploy**
    ```bash
    cd infra
    terraform init
    terraform plan
    terraform apply
    ```
-   Todo se despliega en `us-central1`. No cambiar la región para mantener Free Tier.
+   Everything deploys in `us-central1`. Do not change the region to stay within Free Tier.
 
-3. **Anotar outputs** (bucket, imagen para Docker):
+3. **Note the outputs** (bucket, image URL for Docker):
    ```bash
    terraform output gcs_bucket
    terraform output ingest_image
    ```
-   Si `ingest_image` no aparece, usar: `us-central1-docker.pkg.dev/TU_PROJECT_ID/finance-lakehouse/ingest:latest`.
+   If `ingest_image` is not available, use: `us-central1-docker.pkg.dev/YOUR_PROJECT_ID/finance-lakehouse/ingest:latest`.
 
 ---
 
-### Fase 2.1 + 2.2 – Pipeline de ingestión (local)
+### Phase 2.1 + 2.2 – Ingestion pipeline (local)
 
-El pipeline hace **carga incremental** por defecto (últimos 2 días). Para **carga inicial** (backfill) se usa `--backfill`.
+The pipeline uses **incremental load** by default (last 2 days). Use `--backfill` for the **initial load**.
 
-**Variables de entorno** (mismas que inyecta Terraform en Cloud Run):
+**Environment variables** (same as those Terraform injects into Cloud Run):
 
 ```bash
-export GCS_BUCKET=finance-lakehouse-TU_PROJECT_ID   # o: terraform -C infra output -raw gcs_bucket
-export BQ_PROJECT=TU_PROJECT_ID
+export GCS_BUCKET=finance-lakehouse-YOUR_PROJECT_ID   # or: terraform -C infra output -raw gcs_bucket
+export BQ_PROJECT=YOUR_PROJECT_ID
 export BQ_DATASET_STAGING=staging
 ```
 
-**Carga inicial (una vez, ~1 mes de datos):**
+**Initial load (once, ~1 month of data):**
 ```bash
 cd ~/proyectos/finance-lakehouse-gcp
 source .venv/bin/activate
-pip install -r src/requirements.txt   # si hace falta
+pip install -r src/requirements.txt   # if needed
 python -m src.main --backfill
 ```
 
-**Carga incremental (2 días, uso diario):**
+**Incremental load (2 days, daily use):**
 ```bash
 python -m src.main
 ```
 
-**Otras opciones:**
+**Other options:**
 ```bash
 python -m src.main --help
-python -m src.main --backfill --period 3mo   # backfill de 3 meses
+python -m src.main --backfill --period 3mo   # 3-month backfill
 ```
 
-**Tickers:** por defecto en `src/config.py` (ej. AMZN). Editar esa lista para cambiar.
+**Tickers:** configured by default in `src/config.py` (e.g. AMZN). Edit that list to change them.
 
-**Comprobar en BigQuery:**
-- Rango y total: `SELECT MIN(date), MAX(date), COUNT(*) FROM \`TU_PROJECT.staging.stock_prices\`;`
-- Duplicados (tras varias cargas incrementales):  
-  `SELECT date, symbol, COUNT(*) FROM \`TU_PROJECT.staging.stock_prices\` GROUP BY 1,2 HAVING COUNT(*)>1;`  
-  Esos duplicados se limpian en la capa marts (dbt).
+**Verify in BigQuery:**
+- Range and total: `SELECT MIN(date), MAX(date), COUNT(*) FROM \`YOUR_PROJECT.staging.stock_prices\`;`
+- Duplicates (after several incremental runs):  
+  `SELECT date, symbol, COUNT(*) FROM \`YOUR_PROJECT.staging.stock_prices\` GROUP BY 1,2 HAVING COUNT(*)>1;`  
+  Those duplicates are cleaned in the marts layer (dbt).
 
 ---
 
-### Fase 2.3 – Imagen Docker
+### Phase 2.3 – Docker image
 
-Construir y probar en local (credenciales montadas para GCS/BigQuery):
+Build and test locally (mount credentials for GCS/BigQuery):
 
 ```bash
 docker build -t finance-ingest .
 docker run --rm \
   -v ~/.config/gcloud:/root/.config/gcloud \
-  -e GCS_BUCKET=finance-lakehouse-TU_PROJECT_ID \
-  -e BQ_PROJECT=TU_PROJECT_ID \
+  -e GCS_BUCKET=finance-lakehouse-YOUR_PROJECT_ID \
+  -e BQ_PROJECT=YOUR_PROJECT_ID \
   -e BQ_DATASET_STAGING=staging \
   finance-ingest
 ```
 
-En Cloud Run no hace falta montar credenciales; el Job usa la Service Account de Terraform.
+On Cloud Run you do not need to mount credentials; the Job uses the Terraform Service Account.
 
 ---
 
-### Fase 2.4 – Push a Artifact Registry y actualizar el Job
+### Phase 2.4 – Push to Artifact Registry and update the Job
 
-1. **Configurar Docker para Artifact Registry** (una vez):
+1. **Configure Docker for Artifact Registry** (once):
    ```bash
    gcloud auth configure-docker us-central1-docker.pkg.dev
    ```
 
-2. **Construir y subir la imagen** (usar la URL de `terraform output ingest_image` o la de abajo):
+2. **Build and push the image** (use the URL from `terraform output ingest_image` or the one below):
    ```bash
-   docker build -t us-central1-docker.pkg.dev/TU_PROJECT_ID/finance-lakehouse/ingest:latest .
-   docker push us-central1-docker.pkg.dev/TU_PROJECT_ID/finance-lakehouse/ingest:latest
+   docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/finance-lakehouse/ingest:latest .
+   docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/finance-lakehouse/ingest:latest
    ```
 
-3. **Actualizar el Job** (ya apunta a esa imagen en Terraform):
+3. **Update the Job** (Terraform already points to this image):
    ```bash
    cd infra && terraform apply
    ```
 
-4. **Probar el Job en GCP** (opcional):
+4. **Test the Job in GCP** (optional):
    ```bash
-   gcloud run jobs execute finance-ingest-job --region us-central1 --project TU_PROJECT_ID
+   gcloud run jobs execute finance-ingest-job --region us-central1 --project YOUR_PROJECT_ID
    ```
-   El Scheduler lo ejecuta cada día a las 8:00 AM.
+   The Scheduler runs it daily at 8:00 AM.
 
-**Después de cambiar código (p. ej. tickers o lógica):** volver a hacer `docker build`, `docker push` con el mismo tag; la siguiente ejecución del Job usará la nueva imagen.
-
----
-
-### Fase 2.5 – dbt (pendiente)
-
-- **Objetivo:** modelos en `/dbt_project` que lean de `staging.stock_prices`, dedupliquen por `(date, symbol)` y escriban en `marts`.
-- **Ejecución:** se puede integrar dbt en el mismo contenedor del Job (después de `python -m src.main`) o en un Job aparte.
+**After changing code (e.g. tickers or logic):** run `docker build` and `docker push` again with the same tag; the next Job execution will use the new image.
 
 ---
 
-## Resumen de comandos útiles
+### Phase 2.5 – dbt (pending)
 
-| Acción | Comando |
-|--------|--------|
-| Carga inicial 1 mes | `python -m src.main --backfill` |
-| Carga incremental 2d | `python -m src.main` |
-| Ayuda del pipeline | `python -m src.main --help` |
-| Build + push imagen | `docker build -t ... ; docker push ...` |
-| Ejecutar Job en GCP | `gcloud run jobs execute finance-ingest-job --region us-central1 --project TU_PROJECT_ID` |
+- **Goal:** models in `/dbt_project` that read from `staging.stock_prices`, deduplicate by `(date, symbol)`, and write to `marts`.
+- **Execution:** dbt can be integrated into the same Job container (after `python -m src.main`) or run in a separate Job.
+
+---
+
+## Useful commands summary
+
+| Action | Command |
+|--------|---------|
+| Initial load (1 month) | `python -m src.main --backfill` |
+| Incremental load (2d) | `python -m src.main` |
+| Pipeline help | `python -m src.main --help` |
+| Build + push image | `docker build -t ... ; docker push ...` |
+| Execute Job in GCP | `gcloud run jobs execute finance-ingest-job --region us-central1 --project YOUR_PROJECT_ID` |
 
 ---
 
 ## Stack
 
-- **Lenguaje:** Python 3.9+
+- **Language:** Python 3.9+
 - **IaC:** Terraform
-- **Contenedores:** Docker → Cloud Run Jobs
-- **Transformación:** dbt Core (opcional)
-- **Control de versiones:** Git
+- **Containers:** Docker → Cloud Run Jobs
+- **Transform:** dbt Core (optional)
+- **Version control:** Git
