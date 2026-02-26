@@ -1,0 +1,11 @@
+# Staging layer: raw data loaded by the Python pipeline (append-only, may have duplicates).
+version: 2
+
+sources:
+  - name: staging
+    description: "Raw data from GCS load (staging.stock_prices). Deduplicate in marts."
+    database: "{{ env_var('BQ_PROJECT') }}"
+    schema: staging
+    tables:
+      - name: stock_prices
+        description: "OHLCV + adj_close by date and symbol (yfinance). One row per (date, symbol) after dedupe in marts."

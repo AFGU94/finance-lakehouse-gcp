@@ -2,6 +2,11 @@
 # Outputs - Financial Data Lakehouse
 # ------------------------------------------------------------------------------
 
+output "project_id" {
+  description = "GCP Project ID (BQ_PROJECT para dbt y pipeline)"
+  value       = var.project_id
+}
+
 output "gcs_bucket" {
   description = "Bucket GCS del Data Lake (raw Parquet)"
   value       = google_storage_bucket.lakehouse.name

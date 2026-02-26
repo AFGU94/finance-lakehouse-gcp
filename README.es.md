@@ -183,10 +183,21 @@ En Cloud Run no hace falta montar credenciales; el Job usa la Service Account de
 
 ---
 
-### Fase 2.5 – dbt (pendiente)
+### Fase 2.5 – dbt
 
-- **Objetivo:** modelos en `/dbt_project` que lean de `staging.stock_prices`, dedupliquen por `(date, symbol)` y escriban en `marts`.
-- **Ejecución:** se puede integrar dbt en el mismo contenedor del Job (después de `python -m src.main`) o en un Job aparte.
+Modelos en `/dbt_project` leen de `staging.stock_prices`, deduplican por `(date, symbol)` y escriben en `marts.stock_prices`.
+
+1. **Instalar dbt-bigquery** (ej. en el venv del repo): `pip install dbt-bigquery`
+2. **Desde la carpeta `dbt_project`:**
+   ```bash
+   export BQ_PROJECT=TU_PROJECT_ID
+   cd dbt_project
+   dbt deps
+   dbt run
+   ```
+3. **Opcional:** ejecutar dbt después de la ingestión en el mismo Cloud Run Job (añadir `dbt run` al entrypoint del contenedor) o en un Job programado aparte.
+
+Detalles en `dbt_project/README.md`.
 
 ---
 
@@ -199,6 +210,7 @@ En Cloud Run no hace falta montar credenciales; el Job usa la Service Account de
 | Ayuda del pipeline | `python -m src.main --help` |
 | Build + push imagen | `docker build -t ... ; docker push ...` |
 | Ejecutar Job en GCP | `gcloud run jobs execute finance-ingest-job --region us-central1 --project TU_PROJECT_ID` |
+| Ejecutar dbt (marts) | `cd dbt_project && dbt run` (definir `BQ_PROJECT` antes) |
 
 ---
 

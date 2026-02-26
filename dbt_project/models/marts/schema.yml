@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: stock_prices
+    description: "Deduplicated daily stock prices (one row per date, symbol). Built from staging.stock_prices."
+    columns:
+      - name: date
+        description: "Trading date"
+      - name: symbol
+        description: "Stock ticker (e.g. AAPL, AMZN)"
+      - name: open
+        description: "Opening price"
+      - name: high
+        description: "High price"
+      - name: low
+        description: "Low price"
+      - name: close
+        description: "Closing price"
+      - name: adj_close
+        description: "Adjusted closing price"
+      - name: volume
+        description: "Trading volume"

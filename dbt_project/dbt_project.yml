@@ -1,0 +1,23 @@
+# Financial Data Lakehouse - dbt project
+# Reads from BigQuery staging, writes to marts (deduplicated and business-ready).
+name: finance_lakehouse
+version: "1.0.0"
+config-version: 2
+
+profile: finance_lakehouse
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Default project/datasets; override via env or CLI
+  bq_project: "{{ env_var('BQ_PROJECT', '') }}"
+  staging_dataset: staging
+  marts_dataset: marts
+
+models:
+  finance_lakehouse:
+    marts:
+      # No +schema here: profile dataset is already "marts"; otherwise we get marts_marts.
+      +materialized: table

@@ -185,10 +185,21 @@ On Cloud Run you do not need to mount credentials; the Job uses the Terraform Se
 
 ---
 
-### Phase 2.5 – dbt (pending)
+### Phase 2.5 – dbt
 
-- **Goal:** models in `/dbt_project` that read from `staging.stock_prices`, deduplicate by `(date, symbol)`, and write to `marts`.
-- **Execution:** dbt can be integrated into the same Job container (after `python -m src.main`) or run in a separate Job.
+Models in `/dbt_project` read from `staging.stock_prices`, deduplicate by `(date, symbol)`, and write to `marts.stock_prices`.
+
+1. **Install dbt-bigquery** (e.g. in repo venv): `pip install dbt-bigquery`
+2. **From the `dbt_project` directory:**
+   ```bash
+   export BQ_PROJECT=YOUR_PROJECT_ID
+   cd dbt_project
+   dbt deps
+   dbt run
+   ```
+3. **Optional:** run dbt after ingest in the same Cloud Run Job (add `dbt run` to the container entrypoint) or in a separate scheduled Job.
+
+See `dbt_project/README.md` for details.
 
 ---
 
@@ -201,6 +212,7 @@ On Cloud Run you do not need to mount credentials; the Job uses the Terraform Se
 | Pipeline help | `python -m src.main --help` |
 | Build + push image | `docker build -t ... ; docker push ...` |
 | Execute Job in GCP | `gcloud run jobs execute finance-ingest-job --region us-central1 --project YOUR_PROJECT_ID` |
+| Run dbt (marts) | `cd dbt_project && dbt run` (set `BQ_PROJECT` first) |
 
 ---
 

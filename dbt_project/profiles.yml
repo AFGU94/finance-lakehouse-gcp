@@ -1,0 +1,14 @@
+# dbt BigQuery profile. Uses Application Default Credentials (gcloud auth application-default login).
+# Set BQ_PROJECT before running: export BQ_PROJECT=your-project-id
+# location must match Terraform (us-central1); otherwise BigQuery looks in "US" and staging/marts are not found.
+finance_lakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('BQ_PROJECT') }}"
+      dataset: marts
+      location: us-central1
+      threads: 1
+      timeout_seconds: 60
