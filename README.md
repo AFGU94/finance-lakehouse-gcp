@@ -1,4 +1,4 @@
-# Financial Data Lakehouse (GCP Free Tier)
+# Financial Data Lakehouse (Batching in GCP Free Tier)
 
 **This document is also available in [Spanish](README.es.md).**
 
