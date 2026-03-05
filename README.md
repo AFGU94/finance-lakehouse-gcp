@@ -44,7 +44,7 @@ A **serverless** financial Data Lakehouse on Google Cloud, designed to stay **10
 
 - **GCP account** and a project.
 - **gcloud** installed and authenticated.
-- **Terraform** ≥ 1.5 (HashiCorp official repository recommended).
+- **Terraform** ≥ 1.5 (HashiCorp official repository).
 - **Docker** (to build and push the Job image).
 - **Python 3.9+** and a `.venv` in the repo root to run the pipeline locally.
 
