@@ -76,7 +76,9 @@ done
 1. **Variables**
    ```bash
    cp infra/terraform.tfvars.example infra/terraform.tfvars
-   # Edit infra/terraform.tfvars and set project_id
+   # Edit infra/terraform.tfvars and set:
+   -project_id=YOUR_PROJECT_ID
+   -region=us-central1
    ```
 
 2. **Deploy**
