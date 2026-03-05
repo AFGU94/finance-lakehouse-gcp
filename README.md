@@ -75,7 +75,7 @@ done
 
 1. **Variables**
    ```bash
-   cp infra/terraform.tfvars.example infra/terraform.tfvars
+   cp infra/terraform.tfvars
    # Edit infra/terraform.tfvars and set:
    -project_id=YOUR_PROJECT_ID
    -region=us-central1
@@ -100,11 +100,13 @@ done
 
 ---
 
-### Phase 2.1 + 2.2 – Ingestion pipeline (local)
+### Phase 2.1 Ingestion 
+
+**Pipeline (local)**
 
 The pipeline uses **incremental load** by default (last 2 days). Use `--backfill` for the **initial load**.
 
-**Environment variables** (same as those Terraform injects into Cloud Run):
+**Set up the Environment variables** (same as those Terraform injects into Cloud Run):
 
 ```bash
 export GCS_BUCKET=finance-lakehouse-YOUR_PROJECT_ID   # or: terraform -C infra output -raw gcs_bucket
@@ -132,6 +134,8 @@ python -m src.main --backfill --period 3mo   # 3-month backfill
 ```
 
 **Tickers:** configured by default in `src/config.py` (e.g. AMZN). Edit that list to change them.
+
+### Phase 2.2 Verify
 
 **Verify in BigQuery:**
 - Range and total: `SELECT MIN(date), MAX(date), COUNT(*) FROM \`YOUR_PROJECT.staging.stock_prices\`;`
@@ -187,7 +191,7 @@ On Cloud Run you do not need to mount credentials; the Job uses the Terraform Se
 
 ---
 
-### Phase 2.5 – dbt
+### Phase 3 – dbt
 
 Models in `/dbt_project` read from `staging.stock_prices`, deduplicate by `(date, symbol)`, and write to `marts.stock_prices`.
 
