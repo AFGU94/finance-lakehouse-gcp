@@ -1,4 +1,4 @@
-# Financial Data Lakehouse (GCP Free Tier)
+# Financial Data Lakehouse (Batching in GCP Free Tier)
 
 Data Lakehouse financiero **serverless** en Google Cloud, diseñado para mantenerse **100% en Free Tier**: ingestión con yfinance, Cloud Run Jobs, GCS, BigQuery y (opcional) dbt.
 
